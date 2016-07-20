@@ -39,6 +39,9 @@ class MessageController extends Controller
 
                         $friends_ids = array();
                         $friends_ids = json_decode($request->friends, true);
+                        //add user's own to message permission
+                        $friends_ids[count($friends_ids)]['id'] = $user->id;
+
                        //return $friends_ids;
                         for ($i = 0; $i < count($friends_ids); $i++){
                             
@@ -85,36 +88,29 @@ class MessageController extends Controller
         $messages = array();
         $messageCount = 0;
 
-        $messages += DB::select("SELECT * FROM messages WHERE (( latitude BETWEEN  '$userLatitudeFloor'  AND '$userLatitudeCeil'  )) 
-            AND (( longitude BETWEEN  '$userLongitudeCeil'  AND  '$userLongitudeFloor' )) AND message_permission = 'public' ORDER BY timestamp DESC" );
-        
-        /* Distance Between Two GPS coordinates Formula (Haversine Formula)
+        //$messages = DB::select("SELECT * FROM messages WHERE (( latitude BETWEEN  '$userLatitudeFloor'  AND '$userLatitudeCeil'  )) 
+         //  AND (( longitude BETWEEN  '$userLongitudeCeil'  AND  '$userLongitudeFloor' )) AND message_permission = 'public' ORDER BY timestamp DESC LIMIT 100" );
 
-        $userLongitude = deg2rad($request->userLongitude);
-        $userLatitude = deg2rad($request->userLatitude);
+        $messages = DB::table('messages')->select('*')
+        								 ->whereBetween( 'latitude', array($userLatitudeFloor, $userLatitudeCeil) ) 
+ 										 ->whereBetween( 'longitude', array($userLongitudeCeil, $userLongitudeFloor) )
+ 										 ->where('message_permission', 'public')
+ 										 ->orderBy('timestamp', 'DESC')
+ 										 ->take(100)
+ 										 ->get();
 
-        $messageLatitude = array();
+   		for ($i = 0; $i < count($messages); $i++){
 
-        $postedMessages = DB::select('SELECT * FROM messages');
-    	$messageLongitude = DB::select('SELECT longitude FROM messages');
-    	$messageLatitude = DB::select('SELECT latitude FROM messages');
+   			$timeElapsed = time() -  strtotime($messages[$i]->timestamp);
 
-    	//Compute Distance between the user and stores GPS coordinates using Haversine formuls
-    	for ($i = 0; $i < count($messageLongitude); $i++){
+	   		if ($timeElapsed / 3600 < 1)
+	   			$messages[$i]->timeElapsed = number_format(($timeElapsed / 60), 0) . "m";
+	   		else if ($timeElapsed / 3600 < 24)
+	   			$messages[$i]->timeElapsed  = number_format(($timeElapsed / 3600), 0) . "h";
+	   		else 
+	   			$messages[$i]->timeElapsed = number_format(($timeElapsed / 86400), 0) . "d";
+   		}
 
-    		$deltaLongitude = $userLongitude - deg2rad($postedMessages[$i]->longitude);
-    		$deltaLatitude = $userLatitude - deg2rad($postedMessages[$i]->latitude);
-
-    		$angle = 2 * asin(sqrt(pow(sin($deltaLatitude / 2), 2) +
-    					cos($userLatitude) * cos(deg2rad($postedMessages[$i]->latitude)) * pow(sin($deltaLongitude / 2), 2)));
-
-    		//6373 is the Earth's radius in kn
-    		$distance = ($angle * 6371);
-
-            //echo $distance;
-            
-    	}   
-        */   
         return response()->json($messages);
     }
 
@@ -132,10 +128,30 @@ class MessageController extends Controller
         $friendsMessages = array();
         
 
-        $friendsMessages += DB::select("SELECT * FROM friend_messages WHERE (( latitude BETWEEN  '$userLatitudeFloor'  AND '$userLatitudeCeil'  )) 
-                            AND (( longitude BETWEEN  '$userLongitudeCeil'  AND  '$userLongitudeFloor' )) AND id_message_permission = ? 
-                            ORDER BY timestamp DESC", [$user->id]);
+        //$friendsMessages = DB::select("SELECT * FROM friend_messages WHERE (( latitude BETWEEN  '$userLatitudeFloor'  AND '$userLatitudeCeil'  )) 
+        //                   AND (( longitude BETWEEN  '$userLongitudeCeil'  AND  '$userLongitudeFloor' )) AND id_message_permission = ? 
+        //                  ORDER BY timestamp DESC LIMIT 100", [$user->id]);
         
+        $friendsMessages = DB::table('friend_messages')
+        								->select('*')
+        								->whereBetween( 'latitude', array($userLatitudeFloor, $userLatitudeCeil) ) 
+ 										->whereBetween( 'longitude', array($userLongitudeCeil, $userLongitudeFloor) )
+ 										->where('id_message_permission', $user->id)
+ 										->orderBy('timestamp', 'DESC')
+ 										->take(100)
+ 										->get();
+
+        for ($i = 0; $i < count($friendsMessages) ; $i++){
+
+   			$timeElapsed = time() -  strtotime( $friendsMessages[$i]->timestamp);
+
+	   		if ($timeElapsed / 3600 < 1)
+	   			 $friendsMessages[$i]->timeElapsed = number_format(($timeElapsed / 60), 0) . "m";
+	   		else if ($timeElapsed / 3600 < 24)
+	   			 $friendsMessages[$i]->timeElapsed  = number_format(($timeElapsed / 3600), 0) . "h";
+	   		else 
+	   			 $friendsMessages[$i]->timeElapsed = number_format(($timeElapsed / 86400), 0) . "d";
+   		}
         return response()->json($friendsMessages);
 
 

@@ -31,13 +31,15 @@ Route::group(['prefix' => 'user'], function()
 
 	Route::post('findUserByUsername', 'UserController@findUserByUsername');
 
-	Route::post('getFriends', 'UserController@getFriends');
+	Route::get('getFriends', 'UserController@getFriends');
 
 	Route::post('addFriend', 'UserController@addToFriends');
 
 	Route::post('deleteFriend', 'UserController@deleteFriend');
 
 	Route::post('findUserByPhoneNumber', 'UserController@findUserByPhoneNumber');
+
+	Route::get('findUsersWhoAddedMe', 'UserController@findUsersWhoAddedMe');
 });
 
 Route::group(['prefix' => 'messages'], function()
